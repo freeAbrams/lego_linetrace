@@ -71,4 +71,80 @@ void trace_task(intptr_t unused)
 
         /* モーターの角度差を計算 */
         l_motor_angle = ev3_motor_get_counts(L_MOTOR);
-        r_motor_angle = ev3
+        r_motor_angle = ev3_motor_get_counts(R_MOTOR);
+        diff = l_motor_angle - r_motor_angle;
+
+        /* 左右の反射値に応じてロボットを制御 */
+        int l_speed = speed - (l_reflect - target);
+        int r_speed = speed - (r_reflect - target);
+        ev3_motor_set_power(L_MOTOR, l_speed);
+        ev3_motor_set_power(R_MOTOR, r_speed);
+
+        /* 色センサーが緑を検出するまでループ */
+        if(ev3_color_sensor_get_color(L_SENSOR) == COLOR_GREEN || ev3_color_sensor_get_color(R_SENSOR) == COLOR_GREEN)
+        {
+            found_green = true;
+            ev3_motor_reset_counts(L_MOTOR);
+            ev3_motor_reset_counts(R_MOTOR);
+            break;
+        }
+    }
+}
+
+void junction_task(intptr_t unused)
+{
+    int l_motor_angle = 0;
+    int r_motor_angle = 0;
+    int diff = 0;
+    int diff_yellow = 0;
+    int diff_red = 0;
+    int diff_green = 0;
+    colorid_t color;
+    bool found_green = false;
+
+    while(!found_green)
+    {
+        /* モーターの角度を計算 */
+        l_motor_angle = ev3_motor_get_counts(L_MOTOR);
+        r_motor_angle = ev3_motor_get_counts(R_MOTOR);
+        diff = l_motor_angle - r_motor_angle;
+
+        /* カラーセンサーで色を検出 */
+        color = ev3_color_sensor_get_color(L_SENSOR);
+
+        /* カラーに応じて動作を変更 */
+        switch (color) 
+        {
+            case COLOR_YELLOW:
+                diff_yellow = diff;
+                ev3_motor_set_power(L_MOTOR, rotate_speed);
+                ev3_motor_set_power(R_MOTOR, -rotate_speed);
+                break;
+            case COLOR_RED:
+                diff_red = diff;
+                ev3_motor_set_power(L_MOTOR, rotate_speed);
+                ev3_motor_set_power(R_MOTOR, -rotate_speed);
+                break;
+            case COLOR_GREEN:
+                diff_green = diff;
+                found_green = true;
+                break;
+            default:
+                ev3_motor_set_power(L_MOTOR, rotate_speed);
+                ev3_motor_set_power(R_MOTOR, -rotate_speed);
+                break;
+        }
+
+        /* 少し待つ */
+        tslp_tsk(10);
+    }
+
+    /* 緑に向かって前進 */
+    int target_diff = diff_green;
+    while(abs(ev3_motor_get_counts(L_MOTOR) - ev3_motor_get_counts(R_MOTOR)) < abs(target_diff))
+    {
+        ev3_motor_set_power(L_MOTOR, speed);
+        ev3_motor_set_power(R_MOTOR, speed);
+        tslp_tsk(10);
+    }
+}
