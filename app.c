@@ -26,6 +26,8 @@ const int color_threshold = 60; /* 色の閾値 */
 FILE *log_file = NULL; /* ログファイルのポインタ */
 SYSTIM start_time; /* 開始時間 */
 
+bool color_flag = false; /* 特定の色を検出したかどうかのフラグ */
+
 void main_task(intptr_t unused) 
 { 
     /* モーターとセンサーの設定 */
@@ -49,8 +51,9 @@ void log_task(intptr_t unused)
     {
         SYSTIM now_time;
         get_tim(&now_time);
-        fprintf(log_file, "%d, %d, %d, %d, %d\n", now_time - start_time,
+        fprintf(log_file, "%d, %d, %d, %d, %d, %d, %d\n", now_time - start_time,
                 ev3_motor_get_counts(L_MOTOR), ev3_motor_get_counts(R_MOTOR),
+                ev3_motor_get_power(L_MOTOR), ev3_motor_get_power(R_MOTOR),
                 ev3_color_sensor_get_reflect(L_SENSOR), ev3_color_sensor_get_reflect(R_SENSOR));
     }
 }
@@ -62,9 +65,10 @@ void trace_task(intptr_t unused)
     int diff = 0;
     colorid_t color;
     bool found_green = false;
-
-    while(1)
+    while (1)
     {
+        while(!color_flag)
+        {
         /* 左右のセンサーの反射値を取得 */
         int l_reflect = ev3_color_sensor_get_reflect(L_SENSOR);
         int r_reflect = ev3_color_sensor_get_reflect(R_SENSOR);
@@ -80,13 +84,14 @@ void trace_task(intptr_t unused)
         ev3_motor_set_power(L_MOTOR, l_speed);
         ev3_motor_set_power(R_MOTOR, r_speed);
 
-        /* 色センサーが緑を検出するまでループ */
-        if(ev3_color_sensor_get_color(L_SENSOR) == COLOR_GREEN || ev3_color_sensor_get_color(R_SENSOR) == COLOR_GREEN)
+        /* 色センサーが青、赤、黄を検出するまでループ */
+        if(ev3_color_sensor_get_color(L_SENSOR) == COLOR_BLUE || ev3_color_sensor_get_color(L_SENSOR) == COLOR_RED || ev3_color_sensor_get_color(L_SENSOR) == COLOR_YELLOW || ev3_color_sensor_get_color(R_SENSOR) == COLOR_BLUE || ev3_color_sensor_get_color(R_SENSOR) == COLOR_RED || ev3_color_sensor_get_color(R_SENSOR) == COLOR_YELLOW)
         {
-            found_green = true;
             ev3_motor_reset_counts(L_MOTOR);
             ev3_motor_reset_counts(R_MOTOR);
+            color_flag = true;
             break;
+        }
         }
     }
 }
@@ -101,9 +106,10 @@ void junction_task(intptr_t unused)
     int diff_green = 0;
     colorid_t color;
     bool found_green = false;
-
-    while(!found_green)
+    while (1)
     {
+        while(color_flag)
+        {
         /* モーターの角度を計算 */
         l_motor_angle = ev3_motor_get_counts(L_MOTOR);
         r_motor_angle = ev3_motor_get_counts(R_MOTOR);
@@ -116,11 +122,13 @@ void junction_task(intptr_t unused)
         switch (color) 
         {
             case COLOR_YELLOW:
+                color_flag = true;
                 diff_yellow = diff;
                 ev3_motor_set_power(L_MOTOR, rotate_speed);
                 ev3_motor_set_power(R_MOTOR, -rotate_speed);
                 break;
             case COLOR_RED:
+                color_flag = true;
                 diff_red = diff;
                 ev3_motor_set_power(L_MOTOR, rotate_speed);
                 ev3_motor_set_power(R_MOTOR, -rotate_speed);
@@ -128,6 +136,7 @@ void junction_task(intptr_t unused)
             case COLOR_GREEN:
                 diff_green = diff;
                 found_green = true;
+                color_flag = false;
                 break;
             default:
                 ev3_motor_set_power(L_MOTOR, rotate_speed);
@@ -137,7 +146,9 @@ void junction_task(intptr_t unused)
 
         /* 少し待つ */
         tslp_tsk(10);
+        }
     }
+    
 
     /* 緑に向かって前進 */
     int target_diff = diff_green;
