@@ -49,7 +49,8 @@ void trace_task(intptr_t unused)
     int r_motor_angle = 0;
     int diff = 0;
     colorid_t color;
-    
+    ev3_motor_set_power(L_MOTOR, 30);
+            ev3_motor_set_power(R_MOTOR, 30);
     while (1)
     {
         while(!color_flag)
@@ -66,8 +67,9 @@ void trace_task(intptr_t unused)
             /* 左右の反射値に応じてロボットを制御 */
             int l_speed = speed - (l_reflect - target);
             int r_speed = speed - (r_reflect - target);
-            ev3_motor_set_power(L_MOTOR, l_speed);
-            ev3_motor_set_power(R_MOTOR, r_speed);
+            
+            //ev3_motor_set_power(L_MOTOR, l_speed);
+            //ev3_motor_set_power(R_MOTOR, r_speed);
 
             /* 色センサーが青、赤、黄を検出するまでループ */
             if(ev3_color_sensor_get_color(L_SENSOR) == COLOR_BLUE || ev3_color_sensor_get_color(L_SENSOR) == COLOR_RED || ev3_color_sensor_get_color(L_SENSOR) == COLOR_YELLOW || ev3_color_sensor_get_color(R_SENSOR) == COLOR_BLUE || ev3_color_sensor_get_color(R_SENSOR) == COLOR_RED || ev3_color_sensor_get_color(R_SENSOR) == COLOR_YELLOW)
@@ -159,7 +161,7 @@ void main_task(intptr_t unused)
     get_tim(&start_time);
 
     /* タスクを開始する */ 
-    ev3_sta_cyc(log_task);
     act_tsk(trace_task);
+    ev3_sta_cyc(log_task);
     act_tsk(junction_task);  // junction_taskがアクティブになり、待機状態になる
 }
