@@ -9,9 +9,9 @@
 #endif
 
 /* ポートの設定 */
-#define L_MOTOR EV3_PORT_B /* 左モーターポートの設定 */
-#define R_MOTOR EV3_PORT_C /* 右モーターポートの設定 */
-#define L_SENSOR EV3_PORT_1 /* 左センサーポートの設定 */
+#define L_MOTOR EV3_PORT_C /* 左モーターポートの設定 */
+#define R_MOTOR EV3_PORT_B /* 右モーターポートの設定 */
+#define L_SENSOR EV3_PORT_3 /* 左センサーポートの設定 */
 #define R_SENSOR EV3_PORT_2 /* 右センサーポートの設定 */
 #define LOG_FILENAME "log.txt" /* ログファイルの名前 */
 
@@ -26,25 +26,9 @@ const int color_threshold = 60; /* 色の閾値 */
 FILE *log_file = NULL; /* ログファイルのポインタ */
 SYSTIM start_time; /* 開始時間 */
 
-bool color_flag = false; /* 特定の色を検出したかどうかのフラグ */
+int found_green = 0;
+int color_flag = 0; /* 特定の色を検出したかどうかのフラグ */
 
-void main_task(intptr_t unused) 
-{ 
-    /* モーターとセンサーの設定 */
-    ev3_sensor_config(L_SENSOR, COLOR_SENSOR);
-    ev3_sensor_config(R_SENSOR, COLOR_SENSOR);
-    ev3_motor_config(L_MOTOR, LARGE_MOTOR);
-    ev3_motor_config(R_MOTOR, LARGE_MOTOR);
-    
-    /* ログファイルを開く */
-    log_file = fopen(LOG_FILENAME, "w");
-    get_tim(&start_time);
-
-    /* タスクを開始する */ 
-    ev3_sta_cyc(LOG_CYC);
-    act_tsk(TRACE_TASK);
-    act_tsk(JUNCTION_TASK);  // junction_taskがアクティブになり、待機状態になる
-}
 
 void log_task(intptr_t unused)
 {
@@ -52,7 +36,7 @@ void log_task(intptr_t unused)
     {
         SYSTIM now_time;
         get_tim(&now_time);
-        fprintf(log_file, "%d, %d, %d, %d, %d, %d, %d\n", now_time - start_time,
+        fprintf(log_file, "%ld, %ld, %ld, %d, %d, %d, %d\n", now_time - start_time,
                 ev3_motor_get_counts(L_MOTOR), ev3_motor_get_counts(R_MOTOR),
                 ev3_motor_get_power(L_MOTOR), ev3_motor_get_power(R_MOTOR),
                 ev3_color_sensor_get_reflect(L_SENSOR), ev3_color_sensor_get_reflect(R_SENSOR));
@@ -65,7 +49,7 @@ void trace_task(intptr_t unused)
     int r_motor_angle = 0;
     int diff = 0;
     colorid_t color;
-    bool found_green = false;
+    
     while (1)
     {
         while(!color_flag)
@@ -90,7 +74,7 @@ void trace_task(intptr_t unused)
             {
                 ev3_motor_reset_counts(L_MOTOR);
                 ev3_motor_reset_counts(R_MOTOR);
-                color_flag = true;
+                color_flag = 1;
                 break;
             }
         }
@@ -106,7 +90,7 @@ void junction_task(intptr_t unused)
     int diff_red = 0;
     int diff_green = 0;
     colorid_t color;
-    bool found_green = false;
+    
     while (1)
     {
         while(color_flag)
@@ -134,8 +118,8 @@ void junction_task(intptr_t unused)
                     break;
                 case COLOR_GREEN:
                     diff_green = diff;
-                    found_green = true;
-                    color_flag = false; // 緑を見つけたので、color_flagをリセット
+                    found_green = 1;
+                    color_flag = 0; // 緑を見つけたので、color_flagをリセット
                     break;
                 default:
                     ev3_motor_set_power(L_MOTOR, rotate_speed);
@@ -157,7 +141,25 @@ void junction_task(intptr_t unused)
                 ev3_motor_set_power(R_MOTOR, speed);
                 tslp_tsk(10);
             }
-            found_green = false; // 緑の分岐点を過ぎたらフラグをリセット
+            found_green = 0; // 緑の分岐点を過ぎたらフラグをリセット
         }
     }
+}
+
+void main_task(intptr_t unused) 
+{ 
+    /* モーターとセンサーの設定 */
+    ev3_sensor_config(L_SENSOR, COLOR_SENSOR);
+    ev3_sensor_config(R_SENSOR, COLOR_SENSOR);
+    ev3_motor_config(L_MOTOR, LARGE_MOTOR);
+    ev3_motor_config(R_MOTOR, LARGE_MOTOR);
+    
+    /* ログファイルを開く */
+    log_file = fopen(LOG_FILENAME, "w");
+    get_tim(&start_time);
+
+    /* タスクを開始する */ 
+    ev3_sta_cyc(log_task);
+    act_tsk(trace_task);
+    act_tsk(junction_task);  // junction_taskがアクティブになり、待機状態になる
 }
