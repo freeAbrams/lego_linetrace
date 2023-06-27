@@ -7,6 +7,6 @@
 /*関数プロトタイプ宣言*/
 #ifndef TOPPERS_MACRO_ONLY
 extern void main_task(intptr_t exinf);
-extern void cyclic_task(intptr_t exinf);
+extern void run_task(intptr_t exinf);
 extern void log_task(intptr_t exinf);
 #endif /*TOPPERS MACRO ONLY*/
