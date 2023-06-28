@@ -10,16 +10,7 @@
 #define R_MOTOR EV3_PORT_B /* 右モーターポートの設定 */
 #define L_SENSOR EV3_PORT_3 /* 左センサーポートの設定 */
 #define R_SENSOR EV3_PORT_2 /* 右センサーポートの設定 */
-
-const int target = 90; /* 黒の線上を走行するための目標反射値 */
 const int speed = 15; /* モーターのスピード */
-const int rotate_speed = 10; /* ロボットの旋回スピード */
-const int motor_angle_threshold = 20; /* モーターの角度閾値 */
-const int color_threshold = 60; /* 色の閾値 */
-
-//SYSTIM start_time; /* 開始時間 */
-
-//int found_green = 0;
 
 int l_reflect = 0; /* 左センサーの反射値 */
 int r_reflect = 0; /* 右センサーの反射値 */
@@ -46,17 +37,11 @@ void run_task(intptr_t unused)
     {
         /* 左右のセンサーの反射値を取得 */
         l_reflect = ev3_color_sensor_get_reflect(L_SENSOR);
-        r_reflect = ev3_color_sensor_get_reflect(R_SENSOR);
-        int reflect_diff = l_reflect - r_reflect;
-        /* モーターの角度差を計算 */
-        l_motor_angle = ev3_motor_get_counts(L_MOTOR);
-        r_motor_angle = ev3_motor_get_counts(R_MOTOR);
         /* 左右の反射値に応じてロボットを制御 */
         l_speed = speed + (l_reflect - r_reflect)/4;
         r_speed = speed + (r_reflect - l_reflect)/4;
-        
-        ev3_motor_set_power(L_MOTOR, l_speed);
-        ev3_motor_set_power(R_MOTOR, r_speed);
+        ev3_motor_set_power(L_MOTOR, l_speed);//左モーターのスピードを設定
+        ev3_motor_set_power(R_MOTOR, r_speed);//右モーターのスピードを設定
         if (l_reflect <= 25 && r_reflect <= 25)
         {
             ev3_motor_stop(L_MOTOR, true);
