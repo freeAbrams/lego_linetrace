@@ -37,6 +37,7 @@ void run_task(intptr_t unused)
     {
         /* 左右のセンサーの反射値を取得 */
         l_reflect = ev3_color_sensor_get_reflect(L_SENSOR);
+        r_reflect = ev3_color_sensor_get_reflect(R_SENSOR);
         /* 左右の反射値に応じてロボットを制御 */
         l_speed = speed + (l_reflect - r_reflect)/4;
         r_speed = speed + (r_reflect - l_reflect)/4;
